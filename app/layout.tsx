@@ -1,15 +1,20 @@
 import "../styles/globals.css";
 
-import Header from "@/components/Header/Header";
-import Sidebar from "@/components/Sidebar/Sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/context/providers";
 import type { Metadata } from "next";
+import { Open_Sans } from "next/font/google";
 import { ReactNode } from "react";
 
+const openSans = Open_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-open-sans"
+});
+
 export const metadata: Metadata = {
-  title: "Dualboot Prototype Starter",
-  description: "A high-fidelity UI prototype starter built on Next.js, Tailwind CSS, and shadcn/ui."
+  title: "RestorNet Prototype",
+  description: "High-fidelity prototype of the CRDN RestorNet platform."
 };
 
 interface RootLayoutProps {
@@ -18,36 +23,15 @@ interface RootLayoutProps {
 
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={openSans.variable} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <link rel="icon" href="/assets/images/favicon.png" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark')
-                } else {
-                  document.documentElement.classList.remove('dark')
-                }
-              } catch (_) {}
-            `
-          }}
-        />
       </head>
 
-      <body className="overflow-y-scroll-auto font-base relative min-h-screen w-full overflow-x-hidden scroll-smooth font-sans antialiased">
-        <Providers>
-          <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-950">
-            <Header />
-            <div className="flex flex-1 overflow-hidden">
-              <Sidebar />
-              <main className="flex-1 overflow-auto">{children}</main>
-            </div>
-          </div>
-          <Toaster />
-        </Providers>
+      <body className="min-h-screen bg-background">
+        <Providers>{children}</Providers>
+        <Toaster />
       </body>
     </html>
   );
