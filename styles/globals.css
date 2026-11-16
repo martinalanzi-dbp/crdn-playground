@@ -4,371 +4,92 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Solar for CRDN tokens. Values: DESIGN.md. Light mode only. */
 @theme {
-  /* Light mode color system */
   --color-white: #ffffff;
 
-  /* Enhanced gray scale for better dark mode */
-  --color-gray-25: #fcfcfd;
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
-  --color-gray-950: #030712;
+  /* Neutrals (slate) */
+  --color-neutral-25: #ffffff;
+  --color-neutral-50: #f1f5f9;
+  --color-neutral-100: #e2e8f0;
+  --color-neutral-200: #cbd5e1;
+  --color-neutral-300: #94a3b8;
+  --color-neutral-400: #64748b;
+  --color-neutral-500: #475569;
+  --color-neutral-600: #334155;
+  --color-neutral-700: #1e293b;
+  --color-neutral-800: #0f172a;
+  --color-neutral-900: #020617;
 
-  /* Dualboot Brand Blue */
-  --color-blue-50: #eff6ff;
-  --color-blue-100: #dbeafe;
-  --color-blue-200: #bfdbfe;
-  --color-blue-300: #93c5fd;
-  --color-blue-400: #60a5fa;
-  --color-blue-500: #3b82f6;
-  --color-blue-600: #2563eb;
-  --color-blue-700: #1d4ed8;
-  --color-blue-800: #1e40af;
-  --color-blue-900: #1e3a8a;
+  /* Primary (25 is the lightest tint; 50 to 400 get darker; 50 is the link blue) */
+  --color-primary-25: #eff4ff;
+  --color-primary-50: #2563eb;
+  --color-primary-100: #1d4ed8;
+  --color-primary-200: #1e40af;
+  --color-primary-300: #1e3a8a;
+  --color-primary-400: #122668;
 
-  /* Support Colors */
-  --color-green-50: #f0fdf4;
-  --color-green-500: #22c55e;
-  --color-yellow-50: #fffbeb;
-  --color-yellow-500: #f59e0b;
-  --color-red-50: #fef2f2;
-  --color-red-500: #ef4444;
+  /* Semantic: 50 tint bg, 100 icon/border, 200 text/filled, 300 hover */
+  --color-info-50: #e5eeff;
+  --color-info-100: #366cd9;
+  --color-info-200: #264d99;
+  --color-success-50: #ecfdf5;
+  --color-success-100: #10b981;
+  --color-success-200: #059669;
+  --color-success-300: #04855d;
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #f59e0b;
+  --color-warning-200: #d97706;
+  --color-error-50: #fef2f2;
+  --color-error-100: #ef4444;
+  --color-error-200: #dc2626;
+  --color-error-300: #c62020;
 
-  /* Typography Scale */
-  --font-sans:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-size-xs: 0.75rem; /* 12px */
-  --font-size-sm: 0.875rem; /* 14px */
-  --font-size-base: 1rem; /* 16px */
-  --font-size-lg: 1.125rem; /* 18px */
-  --font-size-xl: 1.25rem; /* 20px */
-  --font-size-2xl: 1.5rem; /* 24px */
-  --font-size-3xl: 1.875rem; /* 30px */
+  /* Alpha */
+  --color-alpha-dark-50: rgb(18 25 38 / 0.02);
+  --color-alpha-dark-500: rgb(18 25 38 / 0.8); /* modal overlay */
+  --color-alpha-light-200: rgb(255 255 255 / 0.08); /* nav hover */
 
-  /* Spacing Scale */
-  --space-1: 0.25rem; /* 4px */
-  --space-2: 0.5rem; /* 8px */
-  --space-3: 0.75rem; /* 12px */
-  --space-4: 1rem; /* 16px */
-  --space-5: 1.25rem; /* 20px */
-  --space-6: 1.5rem; /* 24px */
-  --space-8: 2rem; /* 32px */
-  --space-10: 2.5rem; /* 40px */
-  --space-12: 3rem; /* 48px */
+  --color-link: var(--color-primary-50);
+  /* Focus ring: hard-coded in Figma effect styles, not a variable (DESIGN.md gap 2) */
+  --color-focus: #004eeb;
 
-  /* Border Radius */
-  --radius-sm: 0.375rem; /* 6px */
-  --radius-md: 0.5rem; /* 8px */
-  --radius-lg: 0.75rem; /* 12px */
-  --radius-xl: 1rem; /* 16px */
+  /* Radius: 4px everywhere; 2xl+ reserved for large containers and thumbnails */
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 8px;
+  --radius-3xl: 12px;
 
-  /* Enhanced Shadows for dark mode */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  /* Shadows, named by intensity */
+  --shadow-xs: 0 1px 2px 0 rgb(75 85 101 / 0.05);
+  --shadow-md:
+    0 2px 4px -2px rgb(75 85 101 / 0.06), 0 4px 8px -2px rgb(75 85 101 / 0.1);
   --shadow-lg:
-    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-dark:
-    0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
-}
+    0 8px 8px -4px rgb(75 85 101 / 0.03), 0 20px 24px -4px rgb(75 85 101 / 0.08);
+  --shadow-xl: 0 24px 44px 0 rgb(75 85 101 / 0.14);
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
+  /* Type */
+  --font-sans:
+    var(--font-open-sans), system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+  --tracking-button: 0.01em;
 
-  body {
-    @apply font-sans antialiased bg-background text-foreground;
-    font-size: var(--font-size-base);
-    line-height: 1.6;
-    letter-spacing: -0.011em;
-  }
+  /* Figma body/label styles use a 1.5 line height; Tailwind's defaults are tighter. */
+  --text-xs--line-height: 1.5;
+  --text-sm--line-height: 1.5;
+  --text-base--line-height: 1.5;
 
-  /* Enhanced Typography for dark mode */
-  h1 {
-    @apply font-semibold text-gray-900;
-    font-size: var(--font-size-2xl);
-    line-height: 1.25;
-    letter-spacing: -0.025em;
-  }
-
-  h2 {
-    @apply font-semibold text-gray-900;
-    font-size: var(--font-size-xl);
-    line-height: 1.3;
-    letter-spacing: -0.02em;
-  }
-
-  h3 {
-    @apply font-semibold text-gray-900;
-    font-size: var(--font-size-lg);
-    line-height: 1.4;
-    letter-spacing: -0.015em;
-  }
-
-  h4 {
-    @apply font-medium text-gray-700;
-    font-size: var(--font-size-base);
-    line-height: 1.5;
-  }
-
-  p {
-    @apply text-gray-600;
-    line-height: 1.6;
-  }
-
-  /* Dark mode typography */
-  @variant dark {
-    h1 {
-      @apply text-gray-100;
-    }
-
-    h2 {
-      @apply text-gray-100;
-    }
-
-    h3 {
-      @apply text-gray-200;
-    }
-
-    h4 {
-      @apply text-gray-300;
-    }
-
-    p {
-      @apply text-gray-400;
-    }
-  }
-
-  /* Enhanced Links */
-  a {
-    @apply text-blue-600 transition-colors duration-200 hover:text-blue-700;
-    text-decoration: none;
-  }
-
-  a:hover {
-    text-decoration: underline;
-  }
-
-  @variant dark {
-    a {
-      @apply text-blue-400 hover:text-blue-300;
-    }
-  }
-}
-
-/* Enhanced Loop components with Next.js-like styling */
-.loop-card {
-  @apply rounded-lg border border-gray-200 bg-white;
-  box-shadow: var(--shadow-sm);
-  padding: var(--space-6);
-}
-
-@variant dark {
-  .loop-card {
-    @apply border-gray-800 bg-gray-900;
-    box-shadow: var(--shadow-dark);
-  }
-}
-
-.loop-card-content {
-  @apply space-y-4;
-}
-
-.loop-button-primary {
-  @apply bg-blue-600 font-medium text-white hover:bg-blue-700;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  transition: all 0.2s ease-in-out;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-}
-
-@variant dark {
-  .loop-button-primary {
-    @apply bg-blue-500 hover:bg-blue-400;
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.2);
-  }
-}
-
-.loop-button-secondary {
-  @apply border border-gray-300 bg-gray-50 font-medium text-gray-700 hover:bg-gray-100;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  transition: all 0.2s ease-in-out;
-  cursor: pointer;
-}
-
-@variant dark {
-  .loop-button-secondary {
-    @apply border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700;
-  }
-}
-
-.loop-input {
-  @apply w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-gray-900;
-  @apply focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none;
-  transition: all 0.2s ease-in-out;
-}
-
-@variant dark {
-  .loop-input {
-    @apply border-gray-600 bg-gray-800 text-gray-100 focus:ring-blue-400;
-  }
-}
-
-.loop-sidebar {
-  @apply border-r border-gray-200 bg-white;
-  width: 240px;
-  height: 100%;
-  position: relative;
-}
-
-@variant dark {
-  .loop-sidebar {
-    @apply border-gray-800 bg-gray-950;
-  }
-}
-
-.loop-main-content {
-  @apply flex-1 bg-gray-50;
-  padding: var(--space-8);
-  min-height: 100%;
-}
-
-@variant dark {
-  .loop-main-content {
-    @apply bg-gray-950;
-  }
-}
-
-.loop-breadcrumb {
-  @apply mb-6 text-sm text-gray-500;
-}
-
-@variant dark {
-  .loop-breadcrumb {
-    @apply text-gray-400;
-  }
-}
-
-.loop-breadcrumb a {
-  @apply text-gray-500 hover:text-gray-700;
-}
-
-@variant dark {
-  .loop-breadcrumb a {
-    @apply text-gray-400 hover:text-gray-300;
-  }
-}
-
-.loop-nav-item {
-  @apply flex items-center rounded-md px-3 py-2 text-gray-700 hover:bg-gray-100;
-  transition: background-color 0.2s ease-in-out;
-}
-
-@variant dark {
-  .loop-nav-item {
-    @apply text-gray-300 hover:bg-gray-800;
-  }
-}
-
-.loop-nav-item.active {
-  @apply bg-blue-50 text-blue-700;
-}
-
-@variant dark {
-  .loop-nav-item.active {
-    @apply bg-blue-900/50 text-blue-300;
-  }
-}
-
-/* Enhanced Form styling */
-.loop-form-group {
-  @apply mb-6;
-}
-
-.loop-form-label {
-  @apply mb-2 block text-sm font-medium text-gray-700;
-}
-
-@variant dark {
-  .loop-form-label {
-    @apply text-gray-300;
-  }
-}
-
-.loop-form-description {
-  @apply mt-1 text-sm text-gray-500;
-}
-
-@variant dark {
-  .loop-form-description {
-    @apply text-gray-400;
-  }
-}
-
-/* Next.js-like code blocks and technical content */
-.tech-card {
-  @apply rounded-lg border border-gray-200 bg-gray-50 p-4;
-  transition: all 0.2s ease-in-out;
-}
-
-.tech-card:hover {
-  @apply border-gray-300;
-}
-
-@variant dark {
-  .tech-card {
-    @apply border-gray-700 bg-gray-800;
-  }
-
-  .tech-card:hover {
-    @apply border-gray-600;
-  }
-}
-
-/* Enhanced scrollbar for dark mode */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-gray-100;
-}
-
-@variant dark {
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-800;
-  }
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-300;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400;
-}
-
-@variant dark {
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-600;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-500;
-  }
+  --text-display-sm: 1.5rem;
+  --text-display-sm--line-height: 1.15;
+  --text-display-sm--letter-spacing: -0.01em;
+  --text-display-xs: 1.125rem;
+  --text-display-xs--line-height: 1.15;
+  --text-display-xs--letter-spacing: -0.01em;
+  --text-display-md: 2rem;
+  --text-display-md--line-height: 1.15;
+  --text-display-md--letter-spacing: -0.01em;
 }
 
 @theme inline {
@@ -381,11 +102,6 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -406,77 +122,74 @@
   --color-background: var(--background);
 }
 
-/*
- * shadcn/ui semantic tokens, aliased onto this project's brand palette
- * (defined above) instead of shadcn's default oklch scale, so every
- * shadcn component automatically renders in the brand colors with no
- * per-component overrides. Re-point these when reskinning per client.
- */
+/* shadcn semantic tokens aliased onto the Solar palette. */
 :root {
-  --background: var(--color-white);
-  --foreground: var(--color-gray-900);
+  --background: var(--color-neutral-50);
+  --foreground: var(--color-neutral-900);
   --card: var(--color-white);
-  --card-foreground: var(--color-gray-900);
+  --card-foreground: var(--color-neutral-900);
   --popover: var(--color-white);
-  --popover-foreground: var(--color-gray-900);
-  --primary: var(--color-blue-600);
+  --popover-foreground: var(--color-neutral-900);
+  --primary: var(--color-primary-100);
   --primary-foreground: var(--color-white);
-  --secondary: var(--color-gray-100);
-  --secondary-foreground: var(--color-gray-900);
-  --muted: var(--color-gray-100);
-  --muted-foreground: var(--color-gray-500);
-  --accent: var(--color-blue-50);
-  --accent-foreground: var(--color-blue-700);
-  --destructive: var(--color-red-500);
-  --border: var(--color-gray-200);
-  --input: var(--color-gray-200);
-  --ring: var(--color-blue-500);
-  --chart-1: var(--color-blue-500);
-  --chart-2: var(--color-blue-700);
-  --chart-3: var(--color-green-500);
-  --chart-4: var(--color-yellow-500);
-  --chart-5: var(--color-gray-400);
+  --secondary: var(--color-neutral-50);
+  --secondary-foreground: var(--color-neutral-900);
+  --muted: var(--color-neutral-50);
+  --muted-foreground: var(--color-neutral-500);
+  --accent: var(--color-primary-25);
+  --accent-foreground: var(--color-primary-100);
+  --destructive: var(--color-error-200);
+  --border: var(--color-neutral-100);
+  --input: var(--color-neutral-200);
+  --ring: var(--color-focus);
   --radius: var(--radius-md);
-  --sidebar: var(--color-white);
-  --sidebar-foreground: var(--color-gray-900);
-  --sidebar-primary: var(--color-blue-600);
+  --sidebar: var(--color-primary-300);
+  --sidebar-foreground: var(--color-neutral-200);
+  --sidebar-primary: var(--color-primary-50);
   --sidebar-primary-foreground: var(--color-white);
-  --sidebar-accent: var(--color-blue-50);
-  --sidebar-accent-foreground: var(--color-blue-700);
-  --sidebar-border: var(--color-gray-200);
-  --sidebar-ring: var(--color-blue-500);
+  --sidebar-accent: var(--color-alpha-light-200);
+  --sidebar-accent-foreground: var(--color-white);
+  --sidebar-border: var(--color-primary-200);
+  --sidebar-ring: var(--color-focus);
 }
 
-.dark {
-  --background: var(--color-gray-950);
-  --foreground: var(--color-gray-100);
-  --card: var(--color-gray-900);
-  --card-foreground: var(--color-gray-100);
-  --popover: var(--color-gray-900);
-  --popover-foreground: var(--color-gray-100);
-  --primary: var(--color-blue-500);
-  --primary-foreground: var(--color-white);
-  --secondary: var(--color-gray-800);
-  --secondary-foreground: var(--color-gray-100);
-  --muted: var(--color-gray-800);
-  --muted-foreground: var(--color-gray-400);
-  --accent: color-mix(in oklch, var(--color-blue-900) 50%, transparent);
-  --accent-foreground: var(--color-blue-300);
-  --destructive: var(--color-red-500);
-  --border: var(--color-gray-700);
-  --input: var(--color-gray-700);
-  --ring: var(--color-blue-400);
-  --chart-1: var(--color-blue-400);
-  --chart-2: var(--color-blue-300);
-  --chart-3: var(--color-green-500);
-  --chart-4: var(--color-yellow-500);
-  --chart-5: var(--color-gray-500);
-  --sidebar: var(--color-gray-950);
-  --sidebar-foreground: var(--color-gray-100);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-white);
-  --sidebar-accent: color-mix(in oklch, var(--color-blue-900) 50%, transparent);
-  --sidebar-accent-foreground: var(--color-blue-300);
-  --sidebar-border: var(--color-gray-800);
-  --sidebar-ring: var(--color-blue-400);
+/*
+ * Figma strokes sit inside the frame, so they never change its size. A CSS border does,
+ * so these draw the divider as an inset shadow to keep frames at their Figma dimensions.
+ * Override the color with [--inside-border-color:...].
+ */
+@utility inside-border {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--inside-border-color, var(--border));
+    border-radius: inherit;
+    pointer-events: none;
+  }
+}
+@utility inside-border-top {
+  box-shadow: inset 0 1px 0 0 var(--inside-border-color, var(--border));
+}
+@utility inside-border-b {
+  box-shadow: inset 0 -1px 0 0 var(--inside-border-color, var(--border));
+}
+@utility inside-border-r {
+  box-shadow: inset -1px 0 0 0 var(--inside-border-color, var(--border));
+}
+@utility inside-border-l {
+  box-shadow: inset 1px 0 0 0 var(--inside-border-color, var(--border));
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background font-sans text-sm text-neutral-700 antialiased;
+    line-height: 1.5;
+    letter-spacing: 0;
+  }
 }
