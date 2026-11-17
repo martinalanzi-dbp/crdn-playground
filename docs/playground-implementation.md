@@ -339,7 +339,7 @@ Minimal list-page skeleton:
 |---|---|
 | Shadow labels in Figma run opposite to intensity (the "XL" label is the lightest). | Tokens are named by intensity: `shadow-xs`, `shadow-md`, `shadow-lg`, `shadow-xl` (10.1). Use by value. |
 | Heights of 37px (Navigation/Secondary bar, tab group, search), 33px (underline tab) and 29px (dense rows, menu items, vertical tabs) are not multiples of 4. They are 36, 32 and 28 plus a 1px border in Figma. | Code uses 36px (`h-9`), 32px (`h-8`) and 28px (`h-7`) with the border inside the box. |
-| The default button size is not stated. Section 7 CSS defaults to SM (36px); the Figma Button set offers SM and MD. | `sm` is the default; `md` for page-level primary actions and mobile (confirm in 11.2). |
+| The default button size is not stated. Section 7 CSS defaults to SM (36px); the Figma Button set offers SM and MD. | `sm` is the default for all buttons; `md` only for the status control in a page header (decided 2026-11-17, see DESIGN.md "Buttons > Choosing a size"). |
 | Two blues: Primary/100 `#1D4ED8` (buttons, badges) and Info/100 `#004EEB` (icons, alerts, focus ring). | Both kept. Buttons and selected states use `primary-*`; alerts, info icons and the focus ring use `info-*`. |
 | Primary scale numbering is not monotonic with the usual convention (25 is light; 50 to 400 get darker). | Token names copied exactly (10.1); use the semantic aliases (`bg-primary`, `bg-accent`, `text-link`) in screens instead of raw numbers where possible. |
 | Section 7 CSS tokens duplicate section 10.1. | Section 7 stays as a framework-agnostic reference; the playground uses 10.1 only. |
@@ -348,7 +348,7 @@ Minimal list-page skeleton:
 ### 11.2 Open decisions (need an owner)
 
 1. **Dark mode.** Solar defines no dark palette, but the starter has a toggle and `.dark` tokens. Assumption: light only; toggle and `.dark` block removed.
-2. **Default sizes.** Confirm `sm` (36px) as the default for buttons and inputs, and `md` (44px) for page-level actions.
+2. **Default sizes.** Resolved 2026-11-17: `sm` (36px) for all buttons and inputs; `md` (44px) only for the status control in a page header.
 3. **Top nav content per role.** Section 6.8 lists a typical set but not the items for each `Role` variant (HO, PMD, Administrator, Legal, Franchise Development, Finance, OPS and Sales, IT Support, Marketing, Franchise). Needed to build `TopNav` accurately.
 4. **CRDN wordmark asset.** `public/assets/images/logo.png` is the Dualboot logo. A CRDN wordmark (white version for the dark bar) and favicon are needed.
 5. **Icon source.** This file assumes Heroicons outline (1.5px stroke) because it matches Solar's line icons; the Figma icon set (230 icons) may differ visually. Confirm, or export the set as SVGs into `components/icons/`.

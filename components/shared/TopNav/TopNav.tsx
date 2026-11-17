@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +16,8 @@ import { usePathname } from "next/navigation";
 export interface TopNavMenuItem {
   label: string;
   href: string;
+  /** Feature not built yet: shown greyed out with an "Upcoming" badge and not clickable. */
+  upcoming?: boolean;
 }
 
 export interface TopNavItem {
@@ -29,12 +32,52 @@ interface TopNavProps {
   items: TopNavItem[];
   /** Account dropdown, anchored to the user name on the right. */
   user: { name: string; menu: TopNavMenuItem[] };
+  /** Keep the notifications bell out of the bar while the feature is under development. */
+  hideNotifications?: boolean;
 }
 
 const linkClasses =
   "flex h-16 items-center gap-2 px-6 text-sm text-neutral-200 outline-none transition-colors hover:bg-alpha-light-200 focus-visible:bg-alpha-light-200 data-[state=open]:bg-alpha-light-200 data-[state=open]:text-white";
 
-const TopNav = ({ homeHref, items, user }: TopNavProps) => {
+/* Figma "User Dropdown": full-width rows, 12px padding, a divider under each, no rounding. */
+const dropdownContentClasses =
+  "w-50 rounded-none border border-neutral-100 bg-white p-0 shadow-md ring-0";
+const dropdownRowClasses = "border-b border-neutral-100 p-3 text-sm";
+
+const MenuEntry = ({ entry }: { entry: TopNavMenuItem }) =>
+  entry.upcoming ? (
+    <DropdownMenuItem
+      disabled
+      className={cn(
+        dropdownRowClasses,
+        "justify-between gap-2 rounded-none bg-neutral-50 text-neutral-500 data-disabled:opacity-100"
+      )}
+    >
+      {entry.label}
+      <Badge className="h-auto bg-warning-50 px-2 py-1 font-normal text-warning-200">
+        Upcoming
+      </Badge>
+    </DropdownMenuItem>
+  ) : (
+    <DropdownMenuItem
+      asChild
+      className="rounded-none p-0 focus:bg-neutral-50"
+    >
+      <NextLink
+        href={entry.href}
+        className={cn(dropdownRowClasses, "w-full text-neutral-700")}
+      >
+        {entry.label}
+      </NextLink>
+    </DropdownMenuItem>
+  );
+
+const TopNav = ({
+  homeHref,
+  items,
+  user,
+  hideNotifications
+}: TopNavProps) => {
   const pathname = usePathname();
   const isActive = (item: TopNavItem) =>
     item.href
@@ -73,14 +116,10 @@ const TopNav = ({ homeHref, items, user }: TopNavProps) => {
               <DropdownMenuContent
                 align="start"
                 sideOffset={0}
-                className="w-60 border border-border p-2 shadow-md"
+                className={dropdownContentClasses}
               >
                 {item.menu.map((entry) => (
-                  <DropdownMenuItem key={entry.href} asChild>
-                    <NextLink href={entry.href} className="h-7 px-2 text-sm">
-                      {entry.label}
-                    </NextLink>
-                  </DropdownMenuItem>
+                  <MenuEntry key={entry.href} entry={entry} />
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -100,13 +139,15 @@ const TopNav = ({ homeHref, items, user }: TopNavProps) => {
         )}
 
         <div className="ml-auto flex h-16 items-center">
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="flex h-16 items-center justify-center px-6 text-white inside-border-l outline-none [--inside-border-color:var(--color-alpha-light-200)] hover:bg-alpha-light-200"
-          >
-            <BellIcon className="size-4" />
-          </button>
+          {!hideNotifications && (
+            <button
+              type="button"
+              aria-label="Notifications"
+              className="flex h-16 items-center justify-center px-6 text-white inside-border-l outline-none [--inside-border-color:var(--color-alpha-light-200)] hover:bg-alpha-light-200"
+            >
+              <BellIcon className="size-4" />
+            </button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(
@@ -120,14 +161,10 @@ const TopNav = ({ homeHref, items, user }: TopNavProps) => {
             <DropdownMenuContent
               align="end"
               sideOffset={0}
-              className="w-60 border border-border p-2 shadow-md"
+              className={dropdownContentClasses}
             >
               {user.menu.map((entry) => (
-                <DropdownMenuItem key={entry.href} asChild>
-                  <NextLink href={entry.href} className="h-7 px-2 text-sm">
-                    {entry.label}
-                  </NextLink>
-                </DropdownMenuItem>
+                <MenuEntry key={entry.href} entry={entry} />
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
