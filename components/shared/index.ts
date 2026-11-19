@@ -8,3 +8,4 @@ export { default as Pagination } from "./Pagination/Pagination";
 export { default as FormField } from "./FormField/FormField";
 export { default as SectionCard } from "./SectionCard/SectionCard";
 export { default as StatusDropdown } from "./StatusDropdown/StatusDropdown";
+export { default as SidePanel } from "./SidePanel/SidePanel";

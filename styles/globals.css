@@ -4,6 +4,18 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * shadcn components are generated with Base UI state attributes (data-checked, data-open, ...),
+ * but this project's primitives come from Radix, which sets data-state="checked" | "open" | ...
+ * Without these aliases the selected / open styles never apply (a checked checkbox looks empty).
+ * Each variant matches both spellings, so components from either library keep working.
+ */
+@custom-variant data-checked (&:is([data-state="checked"], [data-checked]));
+@custom-variant data-unchecked (&:is([data-state="unchecked"], [data-unchecked]));
+@custom-variant data-open (&:is([data-state="open"], [data-open]));
+@custom-variant data-closed (&:is([data-state="closed"], [data-closed]));
+@custom-variant data-active (&:is([data-state="active"], [data-active]));
+
 /* Solar for CRDN tokens. Values: DESIGN.md. Light mode only. */
 @theme {
   --color-white: #ffffff;
@@ -40,6 +52,9 @@
   --color-warning-50: #fffbeb;
   --color-warning-100: #f59e0b;
   --color-warning-200: #d97706;
+  /* Hard-coded in the Figma TIP "Within 4 hours" badge; no Foundations variable exists yet. */
+  --color-orange-50: #fff6eb;
+  --color-orange-200: #ff8c00;
   --color-error-50: #fef2f2;
   --color-error-100: #ef4444;
   --color-error-200: #dc2626;

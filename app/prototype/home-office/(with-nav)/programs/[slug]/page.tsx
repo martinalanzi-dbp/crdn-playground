@@ -206,7 +206,6 @@ const ProgramDetailPage = () => {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="md"
             disabled={status === "Inactive"}
             asChild={status !== "Inactive"}
           >
@@ -220,7 +219,6 @@ const ProgramDetailPage = () => {
           </Button>
           <Button
             variant="outline"
-            size="md"
             disabled={status !== "Active"}
             asChild={status === "Active"}
           >

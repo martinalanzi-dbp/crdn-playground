@@ -14,6 +14,7 @@ export const homeOfficeNav: TopNavItem[] = [
     label: "Management",
     menu: [
       { label: "Carriers", href: `${base}/carriers` },
+      { label: "Price Lists", href: `${base}/price-lists` },
       { label: "Fee Config", href: `${base}/fee-config` }
     ]
   },
@@ -27,7 +28,7 @@ export const homeOfficeNav: TopNavItem[] = [
     ]
   },
   { label: "Reports", href: `${base}/reports` },
-  { label: "Finance", href: `${base}/finance` },
+  { label: "Finance", href: `${base}/finance/royalty-collections` },
   { label: "Legal", href: `${base}/legal` }
 ];
 
