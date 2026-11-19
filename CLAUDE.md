@@ -48,6 +48,7 @@ file directly — keeps each rule's own history visible in `git log`.
 
 @.claude/rules/component-reuse.md
 @.claude/rules/git-workflow.md
+@.claude/rules/storybook-components.md
 
 ## Knowledge Base
 
