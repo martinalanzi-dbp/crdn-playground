@@ -64,16 +64,17 @@ components:
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.surface}"
-    typography: "{typography.button-md}"
-    rounded: "{rounded.sm}"
-    height: 44px
-    padding: 0 24px
-  button-primary-hover:
-    backgroundColor: "{colors.primary-hover}"
-  button-primary-sm:
     typography: "{typography.button-sm}"
+    rounded: "{rounded.sm}"
     height: 36px
     padding: 0 16px
+  button-primary-hover:
+    backgroundColor: "{colors.primary-hover}"
+  # MD is only for the status control in a page header (see "Buttons > Choosing a size").
+  button-primary-md:
+    typography: "{typography.button-md}"
+    height: 44px
+    padding: 0 24px
   button-disabled:
     backgroundColor: "{colors.border}"
     textColor: "{colors.text-disabled}"
@@ -270,6 +271,12 @@ All types share the same disabled look: `#E2E8F0` background, `#CBD5E1` border, 
 | SM | 36 | 16 | Button/SM (16px) | 4 |
 | MD | 44 | 24 | Button/MD (18px) | 4 |
 
+**Choosing a size**
+- **SM (36) is the default for every button and input**, including page-header actions (Update, Copy, Add), section-header actions, table toolbars, dialogs and empty states.
+- **MD (44) is only for the status control in a page header** (`StatusDropdown` / `StatusPill` with `size="md"`, for example Draft or Active on a job or program).
+- Do not use MD for anything else. If a screen seems to need a larger button, check Figma and flag it here rather than choosing MD.
+- Icon-only buttons follow the same rule: 36×36 by default.
+
 Variant axes in Figma: `Type` (Primary, Secondary, Destructive, Success, Ghost) × `Size` (SM, MD) × `Status` (Default, Hover, Focus, Disable, Loading) × `Icon` (None, Leading, Trailing, Trailing + Leading, Icon Button). Icon-only buttons are square (36×36 / 44×44).
 
 Related: **Combo Button** (primary action plus dropdown of secondary actions; types Primary and Secondary White; adds an `Open` status).
@@ -277,6 +284,15 @@ Related: **Combo Button** (primary action plus dropdown of secondary actions; ty
 ### Form fields
 
 Base input tokens: background `#FFFFFF`, border `#CBD5E1`, label `#1E293B`, value `#020617`. Tokens also exist for `hover border`, `active border`, `hint text`, and the `error` and `disabled` states (`Form/{base, error, disabled}/…`). Read their values from Figma. Inputs, Text Area, Search and Dropdowns each have a "How to use" frame and a Changes Log in Figma.
+
+### Selection and open state (Radix vs Base UI)
+
+`components/ui/*` comes from shadcn, whose newer templates style state with Base UI attributes (`data-checked:`, `data-unchecked:`, `data-open:`, `data-closed:`, `data-active:`). This project's primitives come from **Radix**, which sets `data-state="checked" | "unchecked" | "open" | "closed" | "active"` instead. A mismatch means the selected style silently never applies: a checked Checkbox, Radio or Switch looks empty, a selected Tab has no highlight, and open/close animations do not run. The component state is correct, only the pixels are wrong, so it is easy to miss.
+
+- `styles/globals.css` defines `@custom-variant data-checked`, `data-unchecked`, `data-open`, `data-closed` and `data-active` so each one matches **both** spellings. Do not remove them.
+- After adding or regenerating any shadcn component with the CLI, check that its selected / open state is visible (open the Checkbox, Radio, Switch, Tabs, Select and Dropdown once) before building on it.
+- In new code, prefer the Radix spelling (`data-[state=checked]:`). For any other Base UI attribute that appears (for example `data-popup-open`, `data-pressed`, `data-selected`), add an alias in `globals.css` in the same way instead of editing every component.
+- Verify selected states visually, not only through behaviour: a filter can apply correctly while its checkbox looks unchecked.
 
 ### Inventory (Figma pages)
 
@@ -324,6 +340,7 @@ The full guide lives on the Tone of Voice pages in Figma. The essentials:
 
 **Visual**
 - Do use one Primary button per view. Pair it with Secondary or Ghost.
+- Do use SM (36px) buttons everywhere. Don't use MD (44px) except for the status control in a page header.
 - Do reserve blue `#1D4ED8` for actions and selection. Links use `#2563EB`.
 - Do use Destructive only for irreversible actions, and Success only for completion. A save action is Primary, not Success.
 - Do keep surfaces white with slate borders, and use elevation sparingly.
@@ -375,6 +392,7 @@ Do **not** silently resolve these. Use Figma styles and variables as truth, and 
 10. **Token name typos and spaces:** `Navigation/Sidebar/Links/selected/boder`, `Form/base/hint text`.
 11. **No motion tokens and no dark mode.**
 12. **No accessibility standard defined.**
+13. **TIP "Within 4 hours" badge uses hard-coded hex** (`#FFF6EB` background, `#FF8C00` text) with no Foundations variable. Code maps them to `orange-50` / `orange-200` in `styles/globals.css` until Figma gets a token. The TIP KPI labels also use `Success/100` and `Warning/100` as text on white, which gap-list rules say fall below 3:1.
 
 ---
 
@@ -383,3 +401,5 @@ Do **not** silently resolve these. Use Figma styles and variables as truth, and 
 | Date | Change |
 | --- | --- |
 | 2026-11-16 | First version, extracted from Figma via MCP (variables, text and effect styles, documentation pages, Tone of Voice). |
+| 2026-11-17 | Documented the Radix vs Base UI state attribute mismatch (checked / open / active styles never applied) and added the aliases in `globals.css`. |
+| 2026-11-17 | Button sizing rule: SM (36px) everywhere, MD (44px) only for the page-header status control. Token block now treats SM as the base `button-primary`. |

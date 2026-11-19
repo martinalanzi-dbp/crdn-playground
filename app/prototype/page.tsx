@@ -1,16 +1,19 @@
 import { Link } from "@/components/shared";
 import { appRoutes } from "@/routes";
+import Image from "next/image";
 
 const prototypes = [
   {
     title: "Home Office",
     description: "Contacts, Management, Operations and Finance flows.",
-    href: appRoutes.homeOfficePath()
+    href: appRoutes.homeOfficePath(),
+    illustration: "/assets/images/illustration-building.webp"
   },
   {
     title: "Franchises",
-    description: "Franchise-side prototype. Not started.",
-    href: appRoutes.franchisesPath()
+    description: "Sign in and Assignments flows.",
+    href: appRoutes.franchisesPath(),
+    illustration: "/assets/images/illustration-store.webp"
   }
 ];
 
@@ -22,12 +25,22 @@ const PrototypePage = () => (
         <Link
           key={item.title}
           href={item.href}
-          className="rounded-md border border-border bg-card p-6 hover:bg-neutral-50"
+          className="flex flex-col gap-4 rounded-md border border-border bg-card p-6 hover:bg-neutral-50"
         >
-          <h2 className="text-display-xs font-medium text-neutral-800">
-            {item.title}
-          </h2>
-          <p className="mt-2 text-sm text-neutral-500">{item.description}</p>
+          <Image
+            src={item.illustration}
+            alt=""
+            width={1024}
+            height={683}
+            className="h-auto w-full"
+            priority
+          />
+          <div>
+            <h2 className="text-display-xs font-medium text-neutral-800">
+              {item.title}
+            </h2>
+            <p className="mt-2 text-sm text-neutral-500">{item.description}</p>
+          </div>
         </Link>
       ))}
     </div>

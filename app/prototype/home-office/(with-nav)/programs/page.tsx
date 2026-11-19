@@ -120,7 +120,7 @@ const ProgramsPage = () => {
               <PopoverContent
                 align="start"
                 sideOffset={4}
-                className="w-(--radix-popover-trigger-width) gap-0 p-0"
+                className="w-fit min-w-(--radix-popover-trigger-width) gap-0 p-0"
               >
                 {filterOptions.map((status) => (
                   <Label
