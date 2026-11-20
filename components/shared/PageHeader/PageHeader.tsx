@@ -8,7 +8,7 @@ interface PageHeaderProps {
 
 /** Full-width white bar under the top nav (Figma "Base Header"). */
 const PageHeader = ({ title, actions }: PageHeaderProps) => (
-  <div className="flex items-center justify-between bg-white p-4 inside-border-b">
+  <div className="flex items-center justify-between p-4 full-bleed-bar">
     <h1 className="py-1 text-display-sm text-neutral-700">{title}</h1>
     {actions && <div className="flex items-center gap-2">{actions}</div>}
   </div>

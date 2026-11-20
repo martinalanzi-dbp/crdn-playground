@@ -1,6 +1,15 @@
 export type TerritoryStatus = "Active" | "Sunsetting" | "Terminated";
-/** Where an estimate sits in the royalty collection flow. */
-export type Queue = "pending" | "approved" | "hold" | "writeoff";
+/**
+ * Which grid of the Royalty Collections page shows the estimate. `none` means no grid:
+ * closed by a write-off, or under 270 days after a denied request.
+ */
+export type Queue =
+  | "pending"
+  | "approved"
+  | "holdRequest"
+  | "hold"
+  | "writeoffRequest"
+  | "none";
 
 export interface InternalNote {
   /** ISO date. */
@@ -25,13 +34,16 @@ export interface RoyaltyEstimate {
   total: number;
   paid: number;
   queue: Queue;
-  /** ISO date the hold ends. Only for estimates in the Holds tab. */
-  holdEnds?: string;
-  /** Why the estimate was written off. Only for the Write-off Review tab. */
-  writeOffReason?: string;
+  /** ISO date the franchise sent its hold or write-off request. */
+  requestedOn?: string;
+  /** The franchise's reason for a pending request, or the reason an active hold was given. */
+  reason?: string;
+  /** ISO dates of an active hold. */
+  holdStarted?: string;
+  holdExpires?: string;
 }
 
-export const currentUser = "Jennifer Johnson";
+export const HOLD_DAYS = 30;
 
 export const unpaid = (item: RoyaltyEstimate) => item.total - item.paid;
 
@@ -54,12 +66,23 @@ export const addDays = (iso: string, days: number) => {
 
 export const todayIso = () => new Date().toISOString().slice(0, 10);
 
-/*
- * Dev note: the hold lasts 30 days after the original 270-day collection date,
- * not 30 days from the day the hold is placed.
- */
 export const reached270Date = (item: RoyaltyEstimate) =>
   item.firstInvoice ? addDays(item.firstInvoice, 270) : null;
+
+/*
+ * Dev note: a hold starts on day 270, or on the request date if that is later,
+ * and lasts 30 days. Franchises can request a hold before day 270.
+ */
+export const holdStartDate = (item: RoyaltyEstimate, requestedOn: string) => {
+  const reached = reached270Date(item);
+  return reached && reached > requestedOn ? reached : requestedOn;
+};
+
+export const daysLeft = (expiresIso: string) =>
+  Math.max(
+    0,
+    Math.round((Date.parse(expiresIso) - Date.parse(todayIso())) / 86_400_000)
+  );
 
 /* Internal notes are the same ones that live under Franchise > Communications. */
 export const defaultNotes: InternalNote[] = [
@@ -220,7 +243,7 @@ export const royaltyEstimates: RoyaltyEstimate[] = [
     paid: 800,
     queue: "pending"
   },
-  /* Holds and write-offs below are sample rows: Figma only shows the counts (3 and 3). */
+  /* Holds and write-off requests below are sample rows, modeled on the Figma grids. */
   {
     ...base,
     id: "9",
@@ -234,7 +257,9 @@ export const royaltyEstimates: RoyaltyEstimate[] = [
     total: 6200,
     paid: 1200,
     queue: "hold",
-    holdEnds: "2026-11-30"
+    holdStarted: "2026-10-31",
+    holdExpires: "2026-11-30",
+    reason: "Client is disputing the invoice amount with the carrier."
   },
   {
     ...base,
@@ -250,7 +275,9 @@ export const royaltyEstimates: RoyaltyEstimate[] = [
     carrier: "Encompass CRDN",
     total: 2300,
     queue: "hold",
-    holdEnds: "2026-12-04"
+    holdStarted: "2026-11-04",
+    holdExpires: "2026-12-04",
+    reason: "Franchisee expects the final insurance payment this month."
   },
   {
     ...base,
@@ -267,7 +294,9 @@ export const royaltyEstimates: RoyaltyEstimate[] = [
     total: 9800,
     paid: 4000,
     queue: "hold",
-    holdEnds: "2026-12-12"
+    holdStarted: "2026-11-12",
+    holdExpires: "2026-12-12",
+    reason: "Active litigation with the client over the remaining balance."
   },
   {
     ...base,
@@ -280,8 +309,9 @@ export const royaltyEstimates: RoyaltyEstimate[] = [
     territory: "CRDN of Territory 11",
     carrier: "UPC Alacrity",
     total: 3100,
-    queue: "writeoff",
-    writeOffReason: "Client declared bankruptcy; balance is uncollectable."
+    queue: "writeoffRequest",
+    requestedOn: "2026-11-03",
+    reason: "Client declared bankruptcy; balance is uncollectable."
   },
   {
     ...base,
@@ -296,8 +326,9 @@ export const royaltyEstimates: RoyaltyEstimate[] = [
     franchiseOwner: "Johnson, Emily",
     carrier: "Allstate CRDN",
     total: 1450,
-    queue: "writeoff",
-    writeOffReason: "Franchise acknowledged upfront it will not collect."
+    queue: "writeoffRequest",
+    requestedOn: "2026-11-10",
+    reason: "Client stopped responding after the work was completed."
   },
   {
     ...base,
@@ -313,7 +344,40 @@ export const royaltyEstimates: RoyaltyEstimate[] = [
     carrier: "Encompass CRDN",
     total: 5300,
     paid: 300,
-    queue: "writeoff",
-    writeOffReason: "Carrier denied the claim after the loss was reviewed."
+    queue: "writeoffRequest",
+    requestedOn: "2026-11-14",
+    reason: "Carrier denied the claim after the loss was reviewed."
+  },
+  {
+    ...base,
+    id: "15",
+    firstInvoice: "2025-06-12",
+    openDays: 525,
+    jobName: "Bennett, Sarah",
+    jobNumber: "CRDN-847H34F",
+    estimate: "Storage",
+    territory: "CRDN of Territory 00",
+    carrier: "UPC Alacrity",
+    total: 18400,
+    queue: "holdRequest",
+    requestedOn: "2026-11-12",
+    reason: "Client confirmed a payment plan starting next month."
+  },
+  {
+    /* Dev note: requested before day 270, so an approved hold starts on day 270, not on the request date. */
+    ...base,
+    id: "16",
+    firstInvoice: "2026-03-09",
+    openDays: 255,
+    jobName: "Davidson, Patricia",
+    jobNumber: "CRDN-845H34F",
+    estimate: "Packout",
+    territory: "CRDN of Territory 01",
+    carrier: "Allstate CRDN",
+    total: 21200,
+    paid: 5600,
+    queue: "holdRequest",
+    requestedOn: "2026-11-16",
+    reason: "Insurance claim is still under review by the carrier."
   }
 ];

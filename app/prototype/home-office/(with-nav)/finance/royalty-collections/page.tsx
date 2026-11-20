@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader, SectionCard } from "@/components/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,13 +24,14 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckCircleIcon,
+  ClockIcon,
   EllipsisVerticalIcon,
   EyeIcon,
   HandRaisedIcon,
   MagnifyingGlassIcon,
   XCircleIcon
 } from "@heroicons/react/24/outline";
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useState } from "react";
 import { toast } from "sonner";
 import DetailsPanel from "../../../_components/RoyaltyCollections/DetailsPanel";
 import MultiSelectFilter from "../../../_components/MultiSelectFilter/MultiSelectFilter";
@@ -39,16 +41,17 @@ import {
   RoyaltyAction
 } from "../../../_components/RoyaltyCollections/RoyaltyModals";
 import {
-  InternalNote,
+  HOLD_DAYS,
+  Queue,
   RoyaltyEstimate,
   TerritoryStatus,
   addDays,
-  currentUser,
+  daysLeft,
   defaultNotes,
   formatDate,
   formatMoney,
   franchiseOptions,
-  reached270Date,
+  holdStartDate,
   royaltyEstimates,
   todayIso,
   unpaid
@@ -57,6 +60,7 @@ import {
 type Tab = "review" | "holds" | "writeoff";
 type View = "pending" | "approved";
 type SortKey = "openDays" | "unpaid" | "franchise" | "franchiseOwner";
+type Sort = { key: SortKey; dir: "asc" | "desc" };
 
 const base = "/prototype/home-office";
 
@@ -68,8 +72,15 @@ const tabs: { id: Tab; label: string }[] = [
 
 const sectionTitles: Record<Tab, string> = {
   review: "Collection Review",
-  holds: "Holds",
+  holds: "On Hold",
   writeoff: "Write-off Review"
+};
+
+/* Dev note: Collection Review sorts by Open Days descending; Holds and Write-off Review by Franchise Owner, A to Z. */
+const defaultSorts: Record<Tab, Sort> = {
+  review: { key: "openDays", dir: "desc" },
+  holds: { key: "franchiseOwner", dir: "asc" },
+  writeoff: { key: "franchiseOwner", dir: "asc" }
 };
 
 /* Territory badge colours: Active green, Sunsetting amber, Terminated red. */
@@ -79,20 +90,84 @@ const territoryBadges: Record<TerritoryStatus, string> = {
   Terminated: "bg-error-50 text-error-200"
 };
 
-const emptyMessages = {
+/* Holds and Write-off Review empty states are not designed yet (TBD in Figma). */
+const emptyMessages: Record<Queue, string> = {
   pending:
     "No estimates pending collection review. Approved estimates waiting for the next batch are in the Awaiting batch view.",
   approved:
     "Estimates you approve for collection appear here until they're included in the next royalty batch. You can undo an approval while it's listed.",
-  holds: "No estimates are on hold.",
-  writeoff: "No estimates are waiting for write-off review."
+  holdRequest: "No hold requests are waiting for review.",
+  hold: "No estimates are on hold.",
+  writeoffRequest: "No write-off requests are waiting for review.",
+  none: ""
 };
+
+interface RowMenuEntry {
+  label: string;
+  icon: typeof EyeIcon;
+  action: RoyaltyAction | "details";
+}
+
+const rowMenus: Partial<Record<Queue, RowMenuEntry[]>> = {
+  pending: [
+    { label: "Details", icon: EyeIcon, action: "details" },
+    { label: "Approve collections", icon: CheckCircleIcon, action: "approve" },
+    { label: "Place on Hold", icon: HandRaisedIcon, action: "hold" },
+    { label: "Write-off", icon: XCircleIcon, action: "writeoff" }
+  ],
+  holdRequest: [{ label: "Details", icon: EyeIcon, action: "details" }],
+  hold: [
+    { label: "Details", icon: EyeIcon, action: "details" },
+    { label: "Extend hold", icon: ClockIcon, action: "extendHold" }
+  ],
+  writeoffRequest: [
+    { label: "Approve Write-off", icon: CheckCircleIcon, action: "approveWriteoff" },
+    { label: "Deny Write-off", icon: XCircleIcon, action: "denyWriteoff" }
+  ]
+};
+
+/*
+ * Details panel footer per grid; the last button is the primary one.
+ * Dev note: there is no "Move to Collections" — HO can't end an active hold early.
+ */
+const detailsActions: Partial<Record<Queue, [string, RoyaltyAction][]>> = {
+  pending: [
+    ["Place on Hold", "hold"],
+    ["Approve", "approve"]
+  ],
+  holdRequest: [
+    ["Deny Hold Request", "denyHold"],
+    ["Approve Hold Request", "approveHold"]
+  ],
+  hold: [["Extend Hold", "extendHold"]]
+};
+
+/* Holds and Write-off Review success toasts are not designed yet; these follow the Collection Review ones. */
+const successMessages: Record<RoyaltyAction, string> = {
+  approve: "Collection approved successfully",
+  hold: "Estimate placed on hold successfully",
+  writeoff: "Estimate written off successfully",
+  undo: "Collection approval undone",
+  extendHold: "Hold extended successfully",
+  approveHold: "Hold request approved successfully",
+  denyHold: "Hold request denied successfully",
+  approveWriteoff: "Write-off approved successfully",
+  denyWriteoff: "Write-off denied successfully"
+};
+
+/*
+ * Dev note: a denied request returns the estimate to its normal course: the review if it
+ * is past day 270, no grid otherwise. Whether a write-off denied during an approved hold
+ * goes back to that hold is TBD.
+ */
+const afterDenial = (item: RoyaltyEstimate): Queue =>
+  item.openDays >= 270 ? "pending" : "none";
 
 interface Column {
   key: string;
   header: string;
-  /** Width in Tailwind spacing units (Figma column widths). */
-  width: string;
+  /** Width in Tailwind spacing units (Figma column widths). Without one, the column takes the remaining space. */
+  width?: string;
   sortKey?: SortKey;
   render: (item: RoyaltyEstimate) => ReactNode;
 }
@@ -104,42 +179,38 @@ type ModalState =
 
 const RoyaltyCollectionsPage = () => {
   const [items, setItems] = useState<RoyaltyEstimate[]>(royaltyEstimates);
-  const [notes, setNotes] = useState<Record<string, InternalNote[]>>({});
   const [tab, setTab] = useState<Tab>("review");
   const [view, setView] = useState<View>("pending");
   const [franchises, setFranchises] = useState<string[] | null>(null);
   const [search, setSearch] = useState("");
-  /* Dev note: default sort is Open Days descending, ties broken by Unpaid descending. */
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "openDays",
-    dir: "desc"
-  });
+  const [sort, setSort] = useState<Sort>(defaultSorts.review);
   const [selected, setSelected] = useState<string[]>([]);
   const [modal, setModal] = useState<ModalState>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
 
-  const count = (queue: RoyaltyEstimate["queue"]) =>
+  const count = (queue: Queue) =>
     items.filter((item) => item.queue === queue).length;
   const tabCounts: Record<Tab, number> = {
     review: count("pending"),
-    holds: count("hold"),
-    writeoff: count("writeoff")
+    /* Dev note: TBD whether this counts active holds too; the Figma sample counts both grids. */
+    holds: count("holdRequest") + count("hold"),
+    writeoff: count("writeoffRequest")
   };
 
-  const activeQueue =
-    tab === "review" ? view : tab === "holds" ? "hold" : "writeoff";
-
-  const rows = useMemo(() => {
-    /* Dev note: search covers the franchise owner and the job name or number only. */
-    const term = search.trim().toLowerCase();
+  /* Dev note: search covers the franchise owner and the job name or number only. */
+  const rowsFor = (
+    queue: Queue,
+    { byFranchise = false, bySearch = false } = {}
+  ) => {
+    const term = bySearch ? search.trim().toLowerCase() : "";
     const value = (item: RoyaltyEstimate) =>
       sort.key === "unpaid" ? unpaid(item) : item[sort.key];
 
     return items
       .filter(
         (item) =>
-          item.queue === activeQueue &&
-          (!franchises || franchises.includes(item.franchise)) &&
+          item.queue === queue &&
+          (!byFranchise || !franchises || franchises.includes(item.franchise)) &&
           (!term ||
             item.franchiseOwner.toLowerCase().includes(term) ||
             item.jobName.toLowerCase().includes(term) ||
@@ -154,10 +225,11 @@ const RoyaltyCollectionsPage = () => {
             : String(left).localeCompare(String(right));
         return (sort.dir === "asc" ? order : -order) || unpaid(b) - unpaid(a);
       });
-  }, [items, activeQueue, franchises, search, sort]);
+  };
 
   const itemById = (id: string) => items.find((item) => item.id === id);
-  const noteList = (id: string) => notes[id] ?? defaultNotes;
+  const openAction = (action: RoyaltyAction, id: string) =>
+    setModal({ kind: "action", action, id });
 
   const move = (ids: string[], changes: Partial<RoyaltyEstimate>) =>
     setItems((current) =>
@@ -171,35 +243,45 @@ const RoyaltyCollectionsPage = () => {
     setDetailsId(null);
   };
 
+  /* Dev note: every reason entered in these dialogs is recorded in the estimate's Activity, not as an internal note. */
   const confirmAction = (action: RoyaltyAction, id: string, reason: string) => {
     const item = itemById(id);
     if (!item) return;
 
-    if (action === "approve") {
-      move([id], { queue: "approved" });
-      toast.success("Collection approved successfully");
-    } else if (action === "hold") {
-      /* Dev note: the hold lasts 30 days after the original 270-day date, not from today. */
-      move([id], {
-        queue: "hold",
-        holdEnds: addDays(reached270Date(item) ?? todayIso(), 30)
-      });
-      /* Dev note: the reason is saved as an internal note by the Home Office user. */
-      setNotes((current) => ({
-        ...current,
-        [id]: [
-          { date: todayIso(), author: currentUser, text: reason },
-          ...(current[id] ?? defaultNotes)
-        ]
-      }));
-      toast.success("Estimate placed on hold successfully");
-    } else if (action === "writeoff") {
-      move([id], { queue: "writeoff", writeOffReason: reason });
-      toast.success("Estimate written off successfully");
-    } else {
-      move([id], { queue: "pending" });
-      toast.success("Collection approval undone");
-    }
+    const startHold = (requestedOn: string, holdReason?: string) => {
+      const start = holdStartDate(item, requestedOn);
+      return {
+        queue: "hold" as const,
+        holdStarted: start,
+        holdExpires: addDays(start, HOLD_DAYS),
+        reason: holdReason
+      };
+    };
+
+    const changes: Partial<RoyaltyEstimate> = (() => {
+      switch (action) {
+        case "approve":
+          return { queue: "approved" };
+        case "undo":
+          return { queue: "pending" };
+        case "hold":
+          return startHold(todayIso(), reason);
+        case "approveHold":
+          return startHold(item.requestedOn ?? todayIso(), item.reason);
+        case "extendHold":
+          /* Dev note: extending adds 30 days to the current expiry and keeps the start date. */
+          return { holdExpires: addDays(item.holdExpires ?? todayIso(), HOLD_DAYS) };
+        case "writeoff":
+        case "approveWriteoff":
+          return { queue: "none" };
+        case "denyHold":
+        case "denyWriteoff":
+          return { queue: afterDenial(item) };
+      }
+    })();
+
+    move([id], changes);
+    toast.success(successMessages[action]);
     setSelected((current) => current.filter((value) => value !== id));
     closeAll();
   };
@@ -220,6 +302,7 @@ const RoyaltyCollectionsPage = () => {
 
   const switchTab = (next: Tab) => {
     setTab(next);
+    setSort(defaultSorts[next]);
     setSelected([]);
   };
 
@@ -246,6 +329,7 @@ const RoyaltyCollectionsPage = () => {
       {item.estimate}
     </a>
   );
+  const date = (iso?: string | null) => (iso ? formatDate(iso) : "-");
 
   const columns: Record<string, Column> = {
     firstInvoice: {
@@ -254,7 +338,7 @@ const RoyaltyCollectionsPage = () => {
       width: "w-25",
       render: (item) => (
         <div className="flex flex-col items-start gap-1">
-          {item.firstInvoice ? formatDate(item.firstInvoice) : "-"}
+          {date(item.firstInvoice)}
           {item.queue === "approved" && (
             <Badge className="h-5 bg-success-50 px-2 font-normal text-success-200">
               Approved
@@ -334,24 +418,81 @@ const RoyaltyCollectionsPage = () => {
       sortKey: "unpaid",
       render: (item) => formatMoney(unpaid(item))
     },
-    holdEnds: {
-      key: "holdEnds",
-      header: "Hold Ends",
-      width: "w-30",
-      render: (item) => (item.holdEnds ? formatDate(item.holdEnds) : "-")
+    requestedOn: {
+      key: "requestedOn",
+      header: "Requested on",
+      width: "w-27.5",
+      render: (item) => date(item.requestedOn)
     },
+    holdStarted: {
+      key: "holdStarted",
+      header: "Hold Started",
+      width: "w-27.5",
+      render: (item) => date(item.holdStarted)
+    },
+    holdExpires: {
+      key: "holdExpires",
+      header: "Hold Expires",
+      width: "w-27.5",
+      render: (item) => date(item.holdExpires)
+    },
+    daysRemaining: {
+      key: "daysRemaining",
+      header: "Days Remaining",
+      width: "w-32.5",
+      render: (item) =>
+        item.holdExpires ? `${daysLeft(item.holdExpires)} days left` : "-"
+    },
+    /* Dev note: the reason is truncated in the grid and shown in full in the Approve and Deny dialogs. */
     reason: {
       key: "reason",
       header: "Reason",
-      width: "w-60",
-      render: (item) => item.writeOffReason ?? "-"
+      render: (item) => (
+        <span className="block truncate" title={item.reason}>
+          {item.reason ?? "-"}
+        </span>
+      )
     }
   };
 
-  const columnSets: Record<string, Column[]> = {
-    pending: [
-      columns.firstInvoice,
-      columns.openDays,
+  const reviewColumns = [
+    columns.firstInvoice,
+    columns.openDays,
+    columns.job,
+    columns.estimate,
+    columns.franchise,
+    columns.territory,
+    columns.owner,
+    columns.carrier,
+    columns.total,
+    columns.paid,
+    columns.unpaid
+  ];
+  /* The Holds grids carry more columns, so they use Figma's narrower widths. */
+  const narrow = (column: Column, width: string) => ({ ...column, width });
+  /* Dev note: in both Holds grids, Franchise Owner and Franchise come before Job and Estimate. */
+  const holdColumns = [
+    narrow(columns.owner, "w-32.5"),
+    columns.franchise,
+    narrow(columns.territory, "w-37.5"),
+    columns.job,
+    columns.estimate,
+    narrow(columns.total, "w-25"),
+    narrow(columns.paid, "w-25"),
+    narrow(columns.unpaid, "w-25")
+  ];
+  const columnSets: Partial<Record<Queue, Column[]>> = {
+    pending: reviewColumns,
+    approved: reviewColumns,
+    holdRequest: [...holdColumns, columns.requestedOn, columns.reason],
+    hold: [
+      ...holdColumns,
+      columns.holdStarted,
+      columns.holdExpires,
+      columns.daysRemaining,
+      columns.reason
+    ],
+    writeoffRequest: [
       columns.job,
       columns.estimate,
       columns.franchise,
@@ -360,33 +501,16 @@ const RoyaltyCollectionsPage = () => {
       columns.carrier,
       columns.total,
       columns.paid,
-      columns.unpaid
-    ],
-    hold: [
-      columns.job,
-      columns.estimate,
-      columns.franchise,
-      columns.owner,
-      columns.carrier,
       columns.unpaid,
-      columns.holdEnds
-    ],
-    writeoff: [
-      columns.job,
-      columns.estimate,
-      columns.franchise,
-      columns.owner,
-      columns.unpaid,
+      columns.requestedOn,
       columns.reason
     ]
   };
-  columnSets.approved = columnSets.pending;
-  const activeColumns = columnSets[activeQueue];
-  const selectable = activeQueue === "pending";
+  const actionColumnWidths: Partial<Record<Queue, string>> = {
+    approved: "w-30",
+    holdRequest: "w-55"
+  };
 
-  const allSelected = rows.length > 0 && rows.every((item) => selected.includes(item.id));
-  const toggleAll = () =>
-    setSelected(allSelected ? [] : rows.map((item) => item.id));
   const toggleRow = (id: string) =>
     setSelected((current) =>
       current.includes(id)
@@ -403,258 +527,288 @@ const RoyaltyCollectionsPage = () => {
         <button
           type="button"
           className="text-sm whitespace-nowrap text-link underline"
-          onClick={() => setModal({ kind: "action", action: "undo", id: item.id })}
+          onClick={() => openAction("undo", item.id)}
         >
           Undo approval
         </button>
       );
     }
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Actions for ${item.jobName}`}
-            className="size-8"
+      <div className="flex items-center justify-end gap-2">
+        {/* Dev note: Deny and Approve sit on the row because they are the actions Finance uses most. */}
+        {item.queue === "holdRequest" && (
+          <>
+            <Button variant="secondary" onClick={() => openAction("denyHold", item.id)}>
+              Deny
+            </Button>
+            <Button onClick={() => openAction("approveHold", item.id)}>
+              Approve
+            </Button>
+          </>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Actions for ${item.jobName}`}
+              className="size-8 shrink-0"
+            >
+              <EllipsisVerticalIcon />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-auto min-w-45 rounded-lg border border-neutral-200 p-0 ring-0"
           >
-            <EllipsisVerticalIcon />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="w-auto min-w-45 rounded-lg border border-neutral-200 p-0 ring-0"
-        >
-          <DropdownMenuItem
-            className={menuItemClasses}
-            onSelect={() => setDetailsId(item.id)}
-          >
-            <EyeIcon />
-            Details
-          </DropdownMenuItem>
-          {item.queue === "pending" && (
-            <>
+            {(rowMenus[item.queue] ?? []).map(({ label, icon: Icon, action }) => (
               <DropdownMenuItem
+                key={label}
                 className={menuItemClasses}
-                onSelect={() => setModal({ kind: "action", action: "approve", id: item.id })}
+                onSelect={() =>
+                  action === "details"
+                    ? setDetailsId(item.id)
+                    : openAction(action, item.id)
+                }
               >
-                <CheckCircleIcon />
-                Approve collections
+                <Icon />
+                {label}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className={menuItemClasses}
-                onSelect={() => setModal({ kind: "action", action: "hold", id: item.id })}
-              >
-                <HandRaisedIcon />
-                Place on Hold
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className={menuItemClasses}
-                onSelect={() => setModal({ kind: "action", action: "writeoff", id: item.id })}
-              >
-                <XCircleIcon />
-                Write-off
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     );
   };
 
+  const renderGrid = (queue: Queue, rows: RoyaltyEstimate[]) => {
+    if (rows.length === 0) {
+      return (
+        <p className="py-16 text-center text-sm text-neutral-500">
+          {emptyMessages[queue]}
+        </p>
+      );
+    }
+
+    const gridColumns = columnSets[queue] ?? [];
+    const selectable = queue === "pending";
+    const allSelected = rows.every((item) => selected.includes(item.id));
+    const toggleAll = () =>
+      setSelected(allSelected ? [] : rows.map((item) => item.id));
+
+    return (
+      <div className="inside-border w-full overflow-x-auto rounded-md">
+        <Table className="table-fixed">
+          <colgroup>
+            {selectable && <col className="w-10" />}
+            {gridColumns.map((column) => (
+              <col key={column.key} className={column.width} />
+            ))}
+            <col className={actionColumnWidths[queue] ?? "w-8"} />
+          </colgroup>
+          <TableHeader>
+            <TableRow className="hover:bg-neutral-50">
+              {selectable && (
+                <TableHead className="h-11.25 px-2 py-0">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={toggleAll}
+                    aria-label="Select all estimates"
+                  />
+                </TableHead>
+              )}
+              {gridColumns.map((column) => (
+                <TableHead
+                  key={column.key}
+                  className="h-11.25 px-2 py-0 text-neutral-600"
+                >
+                  {column.sortKey ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(column.sortKey!)}
+                      className="flex items-center gap-1"
+                    >
+                      {column.header}
+                      {/* Dev note: only the active sort column shows an arrow. */}
+                      {sort.key === column.sortKey &&
+                        (sort.dir === "desc" ? (
+                          <ArrowDownIcon className="size-4" />
+                        ) : (
+                          <ArrowUpIcon className="size-4" />
+                        ))}
+                    </button>
+                  ) : (
+                    column.header
+                  )}
+                </TableHead>
+              ))}
+              <TableHead className="px-2 py-0">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((item) => (
+              <TableRow
+                key={item.id}
+                className={cn(selected.includes(item.id) && "bg-primary-25")}
+              >
+                {selectable && (
+                  <TableCell className="h-16 px-2 py-0">
+                    <Checkbox
+                      checked={selected.includes(item.id)}
+                      onCheckedChange={() => toggleRow(item.id)}
+                      aria-label={`Select ${item.jobName} ${item.estimate}`}
+                    />
+                  </TableCell>
+                )}
+                {gridColumns.map((column) => (
+                  <TableCell
+                    key={column.key}
+                    className="h-16 px-2 py-0 text-neutral-600"
+                  >
+                    {column.render(item)}
+                  </TableCell>
+                ))}
+                <TableCell className="h-16 px-2 py-0">
+                  {actionsFor(item)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
+
+  const searchField = (
+    <div className="relative w-55">
+      <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-500" />
+      <Input
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="Search"
+        aria-label="Search by franchise owner, job name or job number"
+        className="pl-9 text-sm shadow-none"
+      />
+    </div>
+  );
+
+  const listQueue: Queue = tab === "review" ? view : "writeoffRequest";
   const modalItem = modal?.kind === "action" ? itemById(modal.id) : undefined;
   const detailsItem = detailsId ? itemById(detailsId) : undefined;
+  const panelButtons = detailsItem ? (detailsActions[detailsItem.queue] ?? []) : [];
 
   return (
     <>
-      <div className="flex items-center justify-between bg-white p-4 inside-border-b">
-        <h1 className="py-1 text-display-sm text-neutral-700">
-          Royalty Collections
-        </h1>
-        <nav aria-label="Royalty collection queues" className="flex gap-6">
-          {tabs.map(({ id, label }) => {
-            const isActive = tab === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                aria-current={isActive ? "page" : undefined}
-                onClick={() => switchTab(id)}
-                className={cn(
-                  "flex items-center gap-2 border-b-2 pb-1 text-base",
-                  isActive
-                    ? "border-primary-100 text-primary-100"
-                    : "border-transparent text-neutral-500"
-                )}
-              >
-                {label}
-                <span
+      <PageHeader
+        title="Royalty Collections"
+        actions={
+          <nav aria-label="Royalty collection queues" className="flex gap-6">
+            {tabs.map(({ id, label }) => {
+              const isActive = tab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={() => switchTab(id)}
                   className={cn(
-                    "rounded-full px-1.5 text-xs leading-5",
+                    "flex items-center gap-2 border-b-2 pb-1 text-base",
                     isActive
-                      ? "bg-primary-100 text-white"
-                      : "bg-neutral-50 text-neutral-500"
+                      ? "border-primary-100 text-primary-100"
+                      : "border-transparent text-neutral-500"
                   )}
                 >
-                  {tabCounts[id]}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+                  {label}
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 text-xs leading-5",
+                      isActive
+                        ? "bg-primary-100 text-white"
+                        : "bg-neutral-50 text-neutral-500"
+                    )}
+                  >
+                    {tabCounts[id]}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        }
+      />
 
       <div className="flex flex-col gap-4 p-4">
         <h2 className="text-base tracking-widest text-neutral-700 uppercase">
           {sectionTitles[tab]}
         </h2>
 
-        <div className="flex flex-col gap-4 rounded-3xl bg-white p-4 inset-ring-1 inset-ring-border">
-          <div className="flex w-full items-center justify-between">
-            <div className="flex items-center gap-3">
-              <MultiSelectFilter
-                label="Franchise"
-                options={franchiseOptions}
-                value={franchises}
-                onApply={setFranchises}
-                searchable
-              />
-              <div className="relative w-55">
-                <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-500" />
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search"
-                  aria-label="Search by franchise owner, job name or job number"
-                  className="pl-9 text-sm shadow-none"
+        {tab === "holds" ? (
+          <>
+            <SectionCard title="Pending Hold Requests by Franchises">
+              {renderGrid("holdRequest", rowsFor("holdRequest"))}
+            </SectionCard>
+            <SectionCard title="On Active Hold" actions={searchField}>
+              {renderGrid("hold", rowsFor("hold", { bySearch: true }))}
+            </SectionCard>
+          </>
+        ) : (
+          <div className="flex flex-col gap-4 rounded-3xl bg-white p-4 inset-ring-1 inset-ring-border">
+            <div className="flex w-full items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MultiSelectFilter
+                  label="Franchise"
+                  options={franchiseOptions}
+                  value={franchises}
+                  onApply={setFranchises}
+                  searchable
                 />
+                {tab === "review" && searchField}
               </div>
+              {tab === "writeoff" && searchField}
+              {tab === "review" && (
+                <div
+                  role="group"
+                  aria-label="Collection Review view"
+                  className="flex gap-0.5 rounded-md bg-neutral-50 p-0.5"
+                >
+                  {(
+                    [
+                      ["pending", "Pending Review"],
+                      ["approved", "Awaiting Batch"]
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={view === id}
+                      onClick={() => {
+                        setView(id);
+                        setSelected([]);
+                      }}
+                      className={cn(
+                        "rounded-sm px-3 py-1.5 text-base",
+                        view === id
+                          ? "bg-primary-100 text-white"
+                          : "text-neutral-500"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            {tab === "review" && (
-              <div
-                role="group"
-                aria-label="Collection Review view"
-                className="flex gap-0.5 rounded-md bg-neutral-50 p-0.5"
-              >
-                {(
-                  [
-                    ["pending", "Pending Review"],
-                    ["approved", "Awaiting Batch"]
-                  ] as const
-                ).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={view === id}
-                    onClick={() => {
-                      setView(id);
-                      setSelected([]);
-                    }}
-                    className={cn(
-                      "rounded-sm px-3 py-1.5 text-base",
-                      view === id
-                        ? "bg-primary-100 text-white"
-                        : "text-neutral-500"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+
+            {renderGrid(
+              listQueue,
+              rowsFor(listQueue, { byFranchise: true, bySearch: true })
             )}
           </div>
-
-          {rows.length === 0 ? (
-            <p className="py-16 text-center text-sm text-neutral-500">
-              {tab === "review" ? emptyMessages[view] : emptyMessages[tab]}
-            </p>
-          ) : (
-            <div className="inside-border w-full overflow-x-auto rounded-md">
-              <Table className="table-fixed">
-                <colgroup>
-                  {selectable && <col className="w-10" />}
-                  {activeColumns.map((column) => (
-                    <col key={column.key} className={column.width} />
-                  ))}
-                  <col className={activeQueue === "approved" ? "w-30" : "w-8"} />
-                </colgroup>
-                <TableHeader>
-                  <TableRow className="hover:bg-neutral-50">
-                    {selectable && (
-                      <TableHead className="h-11.25 px-2 py-0">
-                        <Checkbox
-                          checked={allSelected}
-                          onCheckedChange={toggleAll}
-                          aria-label="Select all estimates"
-                        />
-                      </TableHead>
-                    )}
-                    {activeColumns.map((column) => (
-                      <TableHead
-                        key={column.key}
-                        className="h-11.25 px-2 py-0 text-neutral-600"
-                      >
-                        {column.sortKey ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleSort(column.sortKey!)}
-                            className="flex items-center gap-1"
-                          >
-                            {column.header}
-                            {/* Dev note: only the active sort column shows an arrow. */}
-                            {sort.key === column.sortKey &&
-                              (sort.dir === "desc" ? (
-                                <ArrowDownIcon className="size-4" />
-                              ) : (
-                                <ArrowUpIcon className="size-4" />
-                              ))}
-                          </button>
-                        ) : (
-                          column.header
-                        )}
-                      </TableHead>
-                    ))}
-                    <TableHead className="px-2 py-0">
-                      <span className="sr-only">Actions</span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((item) => (
-                    <TableRow
-                      key={item.id}
-                      className={cn(selected.includes(item.id) && "bg-primary-25")}
-                    >
-                      {selectable && (
-                        <TableCell className="h-16 px-2 py-0">
-                          <Checkbox
-                            checked={selected.includes(item.id)}
-                            onCheckedChange={() => toggleRow(item.id)}
-                            aria-label={`Select ${item.jobName} ${item.estimate}`}
-                          />
-                        </TableCell>
-                      )}
-                      {activeColumns.map((column) => (
-                        <TableCell
-                          key={column.key}
-                          className="h-16 px-2 py-0 text-neutral-600"
-                        >
-                          {column.render(item)}
-                        </TableCell>
-                      ))}
-                      <TableCell className="h-16 px-2 py-0">
-                        {actionsFor(item)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      {selectable && selected.length > 0 && (
+      {listQueue === "pending" && selected.length > 0 && (
         <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-4 rounded-md bg-white p-3 shadow-xl inset-ring-1 inset-ring-border">
           <span className="px-2 text-base text-neutral-600">
             {selected.length} {selected.length === 1 ? "estimate" : "estimates"} selected
@@ -688,15 +842,22 @@ const RoyaltyCollectionsPage = () => {
         <DetailsPanel
           key={detailsItem.id}
           item={detailsItem}
-          notes={noteList(detailsItem.id)}
+          notes={defaultNotes}
           onClose={() => setDetailsId(null)}
-          onApprove={() =>
-            setModal({ kind: "action", action: "approve", id: detailsItem.id })
+          actions={
+            <div className="flex w-full gap-2">
+              {panelButtons.map(([label, action], index) => (
+                <Button
+                  key={action}
+                  variant={index < panelButtons.length - 1 ? "secondary" : "default"}
+                  className="flex-1"
+                  onClick={() => openAction(action, detailsItem.id)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
           }
-          onMoveToLegal={() => {
-            toast.success("Estimate moved to legal");
-            setDetailsId(null);
-          }}
         />
       )}
     </>

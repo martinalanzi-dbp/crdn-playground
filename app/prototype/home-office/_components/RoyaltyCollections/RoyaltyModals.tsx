@@ -15,34 +15,83 @@ import {
 } from "@heroicons/react/24/outline";
 import { ReactNode, useState } from "react";
 import {
+  HOLD_DAYS,
   RoyaltyEstimate,
+  addDays,
+  daysLeft,
+  formatDate,
   formatMoney,
   unpaid
 } from "../../_data/royalty-collections";
 
 const REASON_MAX = 400;
 
-/** Gray card repeating the estimate the action applies to (Figma modal "Card"). */
-const EstimateSummary = ({ item }: { item: RoyaltyEstimate }) => (
-  <div className="flex justify-between rounded-sm bg-neutral-50 p-4 inset-ring-1 inset-ring-border">
-    <div className="flex w-40 flex-col gap-1">
-      <p className="text-sm text-neutral-900">Job</p>
-      <div className="flex flex-col gap-0.5 text-base text-neutral-500">
+const SummaryField = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div className="flex w-40 flex-col gap-1">
+    <p className="text-sm text-neutral-900">{label}</p>
+    <div className="flex flex-col gap-0.5 text-base text-neutral-500">{children}</div>
+  </div>
+);
+
+/**
+ * Gray card repeating the estimate the action applies to (Figma modal "Card").
+ * `extra` adds a second block below a divider: hold dates or the franchise's reason.
+ */
+const EstimateSummary = ({
+  item,
+  extra
+}: {
+  item: RoyaltyEstimate;
+  extra?: ReactNode;
+}) => (
+  <div className="flex flex-col gap-4 rounded-sm bg-neutral-50 p-4 inset-ring-1 inset-ring-border">
+    <div className="flex justify-between">
+      <SummaryField label="Job">
         <p>{item.jobName}</p>
         <p>{item.jobNumber}</p>
-      </div>
-    </div>
-    <div className="flex w-40 flex-col gap-1">
-      <p className="text-sm text-neutral-900">Franchise/Owner</p>
-      <div className="flex flex-col gap-0.5 text-base text-neutral-500">
+      </SummaryField>
+      <SummaryField label="Franchise/Owner">
         <p>{item.franchise}</p>
         <p>{item.franchiseOwner}</p>
-      </div>
+      </SummaryField>
+      <SummaryField label="Unpaid">
+        <p>{formatMoney(unpaid(item))}</p>
+      </SummaryField>
     </div>
-    <div className="flex w-40 flex-col gap-1">
-      <p className="text-sm text-neutral-900">Unpaid</p>
-      <p className="text-base text-neutral-500">{formatMoney(unpaid(item))}</p>
-    </div>
+    {extra && (
+      <>
+        <hr className="border-border" />
+        {extra}
+      </>
+    )}
+  </div>
+);
+
+const HoldDates = ({ item }: { item: RoyaltyEstimate }) => (
+  <div className="flex justify-between">
+    <SummaryField label="Hold Started">
+      <p>{item.holdStarted ? formatDate(item.holdStarted) : "-"}</p>
+    </SummaryField>
+    <SummaryField label="Hold Expires">
+      <p>{item.holdExpires ? formatDate(item.holdExpires) : "-"}</p>
+    </SummaryField>
+    <SummaryField label="Days Remaining">
+      <p>{item.holdExpires ? `${daysLeft(item.holdExpires)} days left` : "-"}</p>
+    </SummaryField>
+  </div>
+);
+
+const FranchiseReason = ({ item }: { item: RoyaltyEstimate }) => (
+  <div className="flex flex-col gap-1">
+    <p className="text-sm text-neutral-900">Franchise&apos;s reason</p>
+    <p className="text-base text-neutral-500">{item.reason}</p>
+  </div>
+);
+
+const HoldDuration = () => (
+  <div className="flex flex-col gap-1">
+    <p className="text-sm text-neutral-900">Hold Duration</p>
+    <p className="text-base text-neutral-500">{HOLD_DAYS} Days</p>
   </div>
 );
 
@@ -110,11 +159,13 @@ const Intro = ({ children }: { children: ReactNode }) => (
 );
 
 const ReasonField = ({
+  label,
   value,
   onChange,
   required,
   placeholder
 }: {
+  label: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
@@ -123,7 +174,7 @@ const ReasonField = ({
   <div className="flex flex-col gap-1">
     <Label htmlFor="royalty-reason" className="gap-1 text-sm font-normal">
       {required && <span className="text-error-100">*</span>}
-      Reason
+      {label}
     </Label>
     <div className="relative">
       <Textarea
@@ -141,7 +192,136 @@ const ReasonField = ({
   </div>
 );
 
-export type RoyaltyAction = "approve" | "hold" | "writeoff" | "undo";
+export type RoyaltyAction =
+  | "approve"
+  | "hold"
+  | "writeoff"
+  | "undo"
+  | "extendHold"
+  | "approveHold"
+  | "denyHold"
+  | "approveWriteoff"
+  | "denyWriteoff";
+
+interface ActionCopy {
+  title: string;
+  intro: string;
+  confirm: string;
+  /** Reason field. Omitted when the dialog has none (Approve Hold Request). */
+  reason?: { label?: string; required?: boolean; placeholder?: string; initial?: string };
+  /** Shows the franchise's request reason, read-only, inside the summary card. */
+  franchiseReason?: boolean;
+  alert?: { title: string; note?: string };
+}
+
+/* Dev note: the hold reason is pre-filled, required, and can be edited before confirming. */
+const defaultHoldReason = "30-day hold requested and approved.";
+
+const actionCopy: Record<RoyaltyAction, ActionCopy> = {
+  approve: {
+    title: "Approve for collections",
+    intro: "This estimate will be included in the next royalty batch.",
+    confirm: "Confirm",
+    reason: {},
+    alert: {
+      title:
+        "Royalties will be collected on the unpaid amount of this estimate when the next batch runs.",
+      note: "This action cannot be undone once the batch has been posted."
+    }
+  },
+  hold: {
+    title: "Place on Hold",
+    intro: "This estimate will be paused and removed from the collections queue.",
+    confirm: "Confirm",
+    reason: { required: true, initial: defaultHoldReason },
+    alert: {
+      title:
+        "After the hold period ends, this estimate will automatically return to the collections queue if it still has an unpaid amount."
+    }
+  },
+  writeoff: {
+    title: "Write off estimate",
+    intro:
+      "No additional royalties will be collected on this Estimate, and the Estimate will be closed.",
+    confirm: "Write-off",
+    reason: {
+      required: true,
+      placeholder: "Explain why this estimate is being written off."
+    }
+  },
+  undo: {
+    title: "Undo collection approval",
+    intro:
+      "This estimate will be removed from the next royalty batch and returned to the Pending review queue.",
+    confirm: "Undo approval",
+    reason: {}
+  },
+  extendHold: {
+    title: "Extend Hold",
+    intro: "This will extend the hold period for this estimate.",
+    confirm: "Confirm",
+    reason: {},
+    alert: {
+      title:
+        "After the hold period ends, this estimate will return to the collections queue if it still has an unpaid amount."
+    }
+  },
+  approveHold: {
+    title: "Approve Hold Request",
+    intro: "Are you sure you want to approve this hold request?",
+    confirm: "Approve Hold",
+    franchiseReason: true,
+    alert: {
+      title:
+        'If approved, this estimate will be placed on a 30-day hold and will appear in the "Active holds" table.',
+      note: "It will not enter Collections until the hold expires."
+    }
+  },
+  denyHold: {
+    title: "Deny Hold Request",
+    intro: "Are you sure you want to deny this hold request?",
+    confirm: "Deny Hold",
+    franchiseReason: true,
+    reason: {
+      label: "Reason for denial",
+      required: true,
+      placeholder: "Explain why this hold request is being denied."
+    },
+    alert: {
+      title:
+        'If denied, this estimate stays in the "Collection Review" and remains eligible for collections.',
+      note: "The franchisee will be notified of the denial and the reason provided."
+    }
+  },
+  approveWriteoff: {
+    title: "Approve Write-off",
+    intro:
+      "No additional royalties will be collected on this Estimate, and the Estimate will be closed.",
+    confirm: "Approve Write-off",
+    franchiseReason: true,
+    reason: {},
+    alert: {
+      title: "HO accepts the franchisee's reason.",
+      note: "It will not enter the royalty batch, and any royalties already collected on it will not be refunded."
+    }
+  },
+  denyWriteoff: {
+    title: "Deny Write-off",
+    intro:
+      "This estimate will return to its normal course. Standard royalty and collection rules — including eligibility for holds — will continue to apply.",
+    confirm: "Deny Write-off",
+    franchiseReason: true,
+    reason: {
+      label: "Reason for denial",
+      required: true,
+      placeholder: "Explain why this write-off request is being denied."
+    },
+    alert: {
+      title: "HO does not accept the franchisee's reason.",
+      note: "This estimate will return to its normal course, and the franchisee will be notified of this decision along with the reason provided above."
+    }
+  }
+};
 
 interface ActionModalProps {
   action: RoyaltyAction;
@@ -150,44 +330,16 @@ interface ActionModalProps {
   onConfirm: (reason: string) => void;
 }
 
-/* Dev note: the hold reason is pre-filled, required, and can be edited before confirming. */
-const defaultHoldReason = "30-day hold requested and approved.";
-
-/** Approve, Place on Hold, Write-off estimate and Undo approval for one estimate. */
+/** Confirmation dialog for every single-estimate action on the Royalty Collections page. */
 export const ActionModal = ({
   action,
   item,
   onClose,
   onConfirm
 }: ActionModalProps) => {
-  const [reason, setReason] = useState(action === "hold" ? defaultHoldReason : "");
-  const requiresReason = action === "hold" || action === "writeoff";
-  const canConfirm = !requiresReason || reason.trim().length > 0;
-
-  const copy = {
-    approve: {
-      title: "Approve for collections",
-      intro: "This estimate will be included in the next royalty batch.",
-      confirm: "Confirm"
-    },
-    hold: {
-      title: "Place on Hold",
-      intro: "This estimate will be paused and removed from the collections queue.",
-      confirm: "Confirm"
-    },
-    writeoff: {
-      title: "Write off estimate",
-      intro:
-        "No additional royalties will be collected on this Estimate, and the Estimate will be closed.",
-      confirm: "Write-off"
-    },
-    undo: {
-      title: "Undo collection approval",
-      intro:
-        "This estimate will be removed from the next royalty batch and returned to the Pending review queue.",
-      confirm: "Undo approval"
-    }
-  }[action];
+  const copy = actionCopy[action];
+  const [reason, setReason] = useState(copy.reason?.initial ?? "");
+  const canConfirm = !copy.reason?.required || reason.trim().length > 0;
 
   return (
     <ModalFrame
@@ -198,32 +350,33 @@ export const ActionModal = ({
       onConfirm={() => onConfirm(reason.trim())}
     >
       <Intro>{copy.intro}</Intro>
-      <EstimateSummary item={item} />
-      {action === "hold" && (
-        <div className="flex flex-col gap-1">
-          <p className="text-sm text-neutral-900">Hold Duration</p>
-          <p className="text-base text-neutral-500">30 Days</p>
-        </div>
-      )}
-      <ReasonField
-        value={reason}
-        onChange={setReason}
-        required={requiresReason}
-        placeholder={
-          action === "writeoff"
-            ? "Explain why this estimate is being written off."
-            : undefined
+      <EstimateSummary
+        item={item}
+        extra={
+          action === "extendHold" ? (
+            <HoldDates item={item} />
+          ) : copy.franchiseReason ? (
+            <FranchiseReason item={item} />
+          ) : undefined
         }
       />
-      {action === "approve" && (
-        <WarningAlert
-          title="Royalties will be collected on the unpaid amount of this estimate when the next batch runs."
-          note="This action cannot be undone once the batch has been posted."
+      {(action === "hold" || action === "extendHold") && <HoldDuration />}
+      {action === "extendHold" && item.holdExpires && (
+        <div className="flex items-center justify-between rounded-sm bg-success-50 px-4 py-3 text-base text-success-200 inset-ring-1 inset-ring-alpha-dark-50">
+          <p>New expiration date</p>
+          <p>{formatDate(addDays(item.holdExpires, HOLD_DAYS))}</p>
+        </div>
+      )}
+      {copy.reason && (
+        <ReasonField
+          label={copy.reason.label ?? "Reason"}
+          value={reason}
+          onChange={setReason}
+          required={copy.reason.required}
+          placeholder={copy.reason.placeholder}
         />
       )}
-      {action === "hold" && (
-        <WarningAlert title="After the hold period ends, this estimate will automatically return to the collections queue if it still has an unpaid amount." />
-      )}
+      {copy.alert && <WarningAlert {...copy.alert} />}
     </ModalFrame>
   );
 };
