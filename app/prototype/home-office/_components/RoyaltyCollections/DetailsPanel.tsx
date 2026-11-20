@@ -1,7 +1,6 @@
 "use client";
 
 import { SidePanel } from "@/components/shared";
-import { Button } from "@/components/ui/button";
 import { ReactNode, useState } from "react";
 import {
   InternalNote,
@@ -51,8 +50,8 @@ interface DetailsPanelProps {
   /** Internal notes, newest first. They are the same notes as Franchise > Communications. */
   notes: InternalNote[];
   onClose: () => void;
-  onApprove: () => void;
-  onMoveToLegal: () => void;
+  /** Footer buttons, which depend on the grid the panel was opened from. */
+  actions: ReactNode;
 }
 
 /** "Details" side panel opened from a row's actions menu. */
@@ -60,8 +59,7 @@ const DetailsPanel = ({
   item,
   notes,
   onClose,
-  onApprove,
-  onMoveToLegal
+  actions
 }: DetailsPanelProps) => {
   const [showAllNotes, setShowAllNotes] = useState(false);
   const reached = reached270Date(item);
@@ -74,16 +72,7 @@ const DetailsPanel = ({
       onOpenChange={(open) => !open && onClose()}
       title="Details"
       description="Job, balance, payment history and internal notes for this estimate."
-      actions={
-        <div className="flex w-full gap-2">
-          <Button variant="secondary" className="flex-1" onClick={onMoveToLegal}>
-            Move to legal
-          </Button>
-          <Button className="flex-1" onClick={onApprove}>
-            Approve
-          </Button>
-        </div>
-      }
+      actions={actions}
     >
       <div className="flex flex-col gap-4 rounded-sm bg-neutral-50 p-4 inset-ring-1 inset-ring-border">
         <SectionLabel>Job details</SectionLabel>
