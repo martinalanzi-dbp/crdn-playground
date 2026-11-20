@@ -196,6 +196,15 @@
 @utility inside-border-l {
   box-shadow: inset 1px 0 0 0 var(--inside-border-color, var(--border));
 }
+/*
+ * White bar with a bottom border that reaches both edges of the window, while its
+ * content stays in the layout's centered max-w-360 column. border-image paints
+ * outside the box without causing horizontal scroll.
+ */
+@utility full-bleed-bar {
+  border-image: linear-gradient(to top, var(--border) 1px, var(--color-white) 1px)
+    fill 0 / 0 / 0 100vw;
+}
 
 @layer base {
   * {

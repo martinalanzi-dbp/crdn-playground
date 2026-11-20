@@ -191,7 +191,7 @@ const ProgramDetailPage = () => {
   return (
     <>
       {/* Dev notes: Inactive programs cannot be copied or updated; a Draft cannot be copied yet. */}
-      <div className="flex items-center justify-between bg-white p-4 inside-border-b">
+      <div className="flex items-center justify-between p-4 full-bleed-bar">
         <div className="flex flex-col gap-1">
           <h1 className="text-display-sm text-neutral-700">
             {program.name.replace(/ \(CCC\)$/, "")}

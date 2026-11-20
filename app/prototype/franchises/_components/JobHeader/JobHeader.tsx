@@ -40,8 +40,8 @@ const JobHeader = ({
   const [status, setStatus] = useState(initialStatus);
 
   return (
-    <header className="bg-white">
-      <div className="flex items-center justify-between p-4 inside-border-b">
+    <header>
+      <div className="flex items-center justify-between p-4 full-bleed-bar">
         <div className="flex items-center gap-3 py-1">
           <Image
             src="/assets/images/job-property.jpg"
@@ -71,7 +71,7 @@ const JobHeader = ({
         />
       </div>
 
-      <nav className="flex px-4 pt-2 inside-border-b" aria-label="Job sections">
+      <nav className="flex px-4 pt-2 full-bleed-bar" aria-label="Job sections">
         {tabs.map((tab) => {
           const isActive = tab === activeTab;
           return (

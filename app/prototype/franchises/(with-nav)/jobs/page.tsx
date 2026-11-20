@@ -220,7 +220,7 @@ const JobsPage = () => {
 
   return (
     <>
-      <div className="flex items-center justify-between bg-white p-4 inside-border-b">
+      <div className="flex items-center justify-between p-4 full-bleed-bar">
         <div>
           <h1 className="text-display-sm text-neutral-700">Jobs</h1>
           <p className="text-base text-neutral-500">
